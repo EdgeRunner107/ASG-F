@@ -54,19 +54,16 @@ function App() {
     <Page>
       <Layout>
       <h1 style={{ textAlign: 'center' }}>ASG Score Board</h1>
+    
 
-
-        <label>
-          Select Name :{' '}
-          <select value={selectedName} onChange={handleNameChange}>
-            <option value="">No name</option>
-            {names.map((name, index) => (
-              <option key={index} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
+      <StyledSelect value={selectedName} onChange={handleNameChange}>
+      <option value="">전체</option>
+        {names.map((name, index) => (
+          <option key={index} value={name}>
+            {name}
+          </option>
+        ))}
+      </StyledSelect>
 
         <h2>Result</h2>
 {selectedName !== '' && (
@@ -121,4 +118,11 @@ const Layout = styled.div`
   padding: 20px;
   box-sizing: border-box;
   overflow-y: auto;
+`;
+const StyledSelect = styled.select`
+  font-size: 1.0rem;
+  padding: 8px 12px;
+  margin-top: 10px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
 `;
