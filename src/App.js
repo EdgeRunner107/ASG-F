@@ -88,7 +88,7 @@ function App() {
         <td>{row[0]}</td>
         <td>{row[1]}</td>
         <td>{row[2]}</td>
-        <td>{row[3]}</td>
+        <td>{row[3]?.length > 10 ? `${row[3].slice(0, 10)}...` : row[3]}</td>
       </tr>
     ))}
   </tbody>
