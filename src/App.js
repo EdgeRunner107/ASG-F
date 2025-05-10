@@ -7,6 +7,21 @@ function App() {
   const [filteredData, setFilteredData] = useState([]);
   const [selectedName, setSelectedName] = useState('');
   const [names, setNames] = useState([]);
+  const Table = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+
+  th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: center;
+  }
+
+  th {
+    background-color: #f5f5f5;
+  }
+`;
 
   useEffect(() => {
     axios.get(`${process.env.REACT_APP_API_URL}/a`)
@@ -38,12 +53,13 @@ function App() {
   return (
     <Page>
       <Layout>
-        <h1>ASG 점수리스트</h1>
+      <h1 style={{ textAlign: 'center' }}>ASG Score Board</h1>
+
 
         <label>
-          이름 :{' '}
+          Select Name :{' '}
           <select value={selectedName} onChange={handleNameChange}>
-            <option value="">전체</option>
+            <option value="">No name</option>
             {names.map((name, index) => (
               <option key={index} value={name}>
                 {name}
@@ -52,16 +68,31 @@ function App() {
           </select>
         </label>
 
-        <h2>결과</h2>
-        {selectedName !== '' && (
-          <p><strong>총 점수 합계:</strong> {totalScore}</p>
-        )}
+        <h2>Result</h2>
+{selectedName !== '' && (
+  <p><strong>Total :</strong> {totalScore}</p>
+)}
 
-        <ul>
-          {filteredData.map((row, index) => (
-            <li key={index}>{JSON.stringify(row)}</li>
-          ))}
-        </ul>
+<Table>
+  <thead>
+    <tr>
+      <th>Time</th>
+      <th>Score</th>
+      <th>Name</th>
+      <th>Donator</th>
+    </tr>
+  </thead>
+  <tbody>
+    {filteredData.map((row, index) => (
+      <tr key={index}>
+        <td>{row[0]}</td>
+        <td>{row[1]}</td>
+        <td>{row[2]}</td>
+        <td>{row[3]}</td>
+      </tr>
+    ))}
+  </tbody>
+</Table>
       </Layout>
     </Page>
   );
