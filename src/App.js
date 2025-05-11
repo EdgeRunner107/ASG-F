@@ -23,32 +23,58 @@ function App() {
   }
 `;
 
-  useEffect(() => {
-    axios.get(`${process.env.REACT_APP_API_URL}/a`)
-      .then(response => {
-        const result = response.data;
-        setData(result);
-        setFilteredData(result);
+useEffect(() => {
+  axios.get(`${process.env.REACT_APP_API_URL}/a`)
+    .then(response => {
+      const result = response.data;
+      setData(result);
+      setFilteredData(result);
 
-        const nameSet = new Set(result.map(item => item[2]));
-        setNames(Array.from(nameSet));
-      })
-      .catch(error => console.error('API 호출 오류:', error));
-  }, []);
+      // 공백 및 특수공백 제거 후 중복 제거
+      const cleanedNames = result
+        .map(item => (item[4] || '')
+          .replace(/[\u200B-\u200D\uFEFF]/g, '') // 특수 공백 제거
+          .trim()
+        )
+        .filter(name => name !== ''); // 완전히 비어있는 값 제거
 
-  const handleNameChange = (e) => {
-    const name = e.target.value;
-    setSelectedName(name);
+      const uniqueNames = Array.from(new Set(cleanedNames));
+      setNames(uniqueNames);
+    })
+    .catch(error => console.error('API 호출 오류:', error));
+}, []);
 
-    if (name === '') {
-      setFilteredData(data);
-    } else {
-      const filtered = data.filter(item => item[2] === name);
-      setFilteredData(filtered);
-    }
+const handleNameChange = (e) => {
+  const name = e.target.value;
+  setSelectedName(name);
+
+  if (name === '') {
+    setFilteredData(data);
+  } else {
+    const filtered = data.filter(item => {
+      const donor = (item[4] || '')
+        .replace(/[\u200B-\u200D\uFEFF]/g, '')
+        .trim();
+      return donor === name;
+    });
+    setFilteredData(filtered);
+  }
+};
+
+  const totalScore = filteredData.reduce((sum, item) => sum + (Number(item[6]) || 0), 0);
+  const parseDateFromString = (dateStr) => {
+    if (typeof dateStr !== 'string') return ''; // null, undefined, number, object 등 방지
+  
+    const match = dateStr.match(/Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)/);
+    if (!match) return dateStr; // 형식에 맞지 않으면 원본 반환
+  
+    const [_, year, month, day, hour, min, sec] = match.map(Number);
+    const date = new Date(year, month, day, hour, min, sec);
+  
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
   };
-
-  const totalScore = filteredData.reduce((sum, item) => sum + (Number(item[1]) || 0), 0);
+  
 
   return (
     <Page>
@@ -74,18 +100,20 @@ function App() {
   <thead>
     <tr>
       <th>Time</th>
-      <th>Score</th>
-      <th>Name</th>
       <th>Donator</th>
+      <th>Score</th>
+      <th>text</th>
+      <th>Name</th>
     </tr>
   </thead>
   <tbody>
     {filteredData.map((row, index) => (
       <tr key={index}>
-        <td>{row[0]}</td>
+        <td>{parseDateFromString(row[0])}</td>
         <td>{row[1]}</td>
         <td>{row[2]}</td>
         <td>{row[3]?.length > 10 ? `${row[3].slice(0, 10)}...` : row[3]}</td>
+        <td>{row[4]}</td>
       </tr>
     ))}
   </tbody>
@@ -111,7 +139,7 @@ const Layout = styled.div`
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 440px;
+   max-width: 640px; 
   height: 100%;
   max-height: 920px;
   background-color: #ffffff;
