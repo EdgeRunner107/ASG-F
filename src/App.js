@@ -7,21 +7,22 @@ function App() {
   const [filteredData, setFilteredData] = useState([]);
   const [selectedName, setSelectedName] = useState('');
   const [names, setNames] = useState([]);
+
   const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 16px;
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
 
-  th, td {
-    border: 1px solid #ccc;
-    padding: 8px;
-    text-align: center;
-  }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
 
-  th {
-    background-color: #f5f5f5;
-  }
-`;
+    th {
+      background-color: #f5f5f5;
+    }
+  `;
 
   useEffect(() => {
     axios.get(`${process.env.REACT_APP_API_URL}/a`)
@@ -30,13 +31,12 @@ function App() {
         setData(result);
         setFilteredData(result);
 
-        // 공백 및 특수공백 제거 후 중복 제거
         const cleanedNames = result
           .map(item => (item[4] || '')
-            .replace(/[\u200B-\u200D\uFEFF]/g, '') // 특수 공백 제거
+            .replace(/[\u200B-\u200D\uFEFF]/g, '')
             .trim()
           )
-          .filter(name => name !== ''); // 완전히 비어있는 값 제거
+          .filter(name => name !== '');
 
         const uniqueNames = Array.from(new Set(cleanedNames));
         setNames(uniqueNames);
@@ -61,30 +61,33 @@ function App() {
     }
   };
 
-  // Donator별 점수 합계 계산
   const donatorSummary = {};
+  const mootList = {};
+
   filteredData.forEach(item => {
     const donator = item[1];
     const score = Number(item[2]?.replace(/[^0-9]/g, '')) || 0;
+    const tag = item[5];
 
-    if (donator) {
+    if (!donator) return;
+
+    if (tag?.includes('묻') && tag !== '묻먹음') {
+      // 묻만 포함된 경우 묻 리스트에 저장
+      mootList[donator] = (mootList[donator] || 0) + score;
+    } else {
+      // 일반 선물 또는 묻먹음 포함
       donatorSummary[donator] = (donatorSummary[donator] || 0) + score;
     }
   });
 
-  // 총합 계산
   const totalScore = filteredData.reduce((sum, item) => sum + (Number(item[6]) || 0), 0);
 
-  // 날짜 포맷 변경 함수
   const parseDateFromString = (dateStr) => {
-    if (typeof dateStr !== 'string') return ''; // null, undefined, number, object 등 방지
-
+    if (typeof dateStr !== 'string') return '';
     const match = dateStr.match(/Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)/);
-    if (!match) return dateStr; // 형식에 맞지 않으면 원본 반환
-
+    if (!match) return dateStr;
     const [_, year, month, day, hour, min, sec] = match.map(Number);
     const date = new Date(year, month, day, hour, min, sec);
-
     const pad = (n) => String(n).padStart(2, '0');
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
   };
@@ -105,35 +108,60 @@ function App() {
 
         <h2>Result</h2>
 
-        {/* "전체"가 선택되었을 때 선물 리스트 안 보이게 하기 */}
-                  {selectedName !== '' && Object.entries(donatorSummary).length > 0 && (
-            <>
-              <h3>선물 리스트</h3>
-              <Table>
-                <thead>
-                  <tr>
-                    <th>Donator</th>
-                    <th>Score</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(donatorSummary)
-                    .sort(([, totalA], [, totalB]) => totalB - totalA) // 갯수 내림차순 정렬
-                    .map(([donator, total], index) => (
-                      <tr key={index}>
-                        <td>{donator}</td>
-                        <td>{total.toLocaleString()}개</td>
-                      </tr>
-                    ))}
-                </tbody>
-              </Table>
-            </>
-          )}
+        {/* 선물 리스트 */}
+        {selectedName !== '' && Object.entries(donatorSummary).length > 0 && (
+          <>
+            <h3>선물 리스트</h3>
+            <Table>
+              <thead>
+                <tr>
+                  <th>Donator</th>
+                  <th>Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(donatorSummary)
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([donator, total], index) => (
+                    <tr key={index}>
+                      <td>{donator}</td>
+                      <td>{total.toLocaleString()}개</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </Table>
+          </>
+        )}
+
+        {/* 묻 리스트 */}
+        {selectedName !== '' && Object.entries(mootList).length > 0 && (
+          <>
+            <h3 style={{ marginTop: '20px' }}>묻 리스트</h3>
+            <Table>
+              <thead>
+                <tr>
+                  <th>Donator</th>
+                  <th>Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(mootList)
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([donator, total], index) => (
+                    <tr key={index} style={{ backgroundColor: '#ffe0eb' }}>
+                      <td>{donator}</td>
+                      <td>{total.toLocaleString()}개</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </Table>
+          </>
+        )}
 
         {selectedName !== '' && (
           <p style={{ fontSize: '1.5em', fontWeight: 'bold' }}>
-          <strong>Total :</strong> {totalScore}
-        </p>
+            <strong>Total :</strong> {totalScore}
+          </p>
         )}
 
         <Table>
@@ -147,15 +175,31 @@ function App() {
             </tr>
           </thead>
           <tbody>
-            {filteredData.map((row, index) => (
-              <tr key={index}>
-                <td>{parseDateFromString(row[0])}</td>
-                <td>{row[1]}</td>
-                <td>{row[2]}</td>
-                <td>{row[3]?.length > 10 ? `${row[3].slice(0, 10)}...` : row[3]}</td>
-                <td>{row[4]}</td>
-              </tr>
-            ))}
+            {filteredData.map((row, index) => {
+              const tag = row[5];
+              const isMootMeogeum = tag === '묻먹음';
+              const isMootOnly = tag?.includes('묻') && tag !== '묻먹음';
+
+              const rowStyle = isMootMeogeum
+                ? { backgroundColor: 'lightblue' }
+                : isMootOnly
+                ? { backgroundColor: '#ffe0eb' }
+                : {};
+
+              return (
+                <tr key={index} style={rowStyle}>
+                  <td>{parseDateFromString(row[0])}</td>
+                  <td>{row[1]}</td>
+                  <td>{row[2]}</td>
+                  <td>
+                    {row[3]?.length > 10 ? `${row[3].slice(0, 10)}...` : row[3]}
+                    {isMootMeogeum && ' (묻먹음)'}
+                    {isMootOnly && ' (묻)'}
+                  </td>
+                  <td>{row[4]}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </Table>
       </Layout>
