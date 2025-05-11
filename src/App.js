@@ -23,101 +23,141 @@ function App() {
   }
 `;
 
-useEffect(() => {
-  axios.get(`${process.env.REACT_APP_API_URL}/a`)
-    .then(response => {
-      const result = response.data;
-      setData(result);
-      setFilteredData(result);
+  useEffect(() => {
+    axios.get(`${process.env.REACT_APP_API_URL}/a`)
+      .then(response => {
+        const result = response.data;
+        setData(result);
+        setFilteredData(result);
 
-      // 공백 및 특수공백 제거 후 중복 제거
-      const cleanedNames = result
-        .map(item => (item[4] || '')
-          .replace(/[\u200B-\u200D\uFEFF]/g, '') // 특수 공백 제거
-          .trim()
-        )
-        .filter(name => name !== ''); // 완전히 비어있는 값 제거
+        // 공백 및 특수공백 제거 후 중복 제거
+        const cleanedNames = result
+          .map(item => (item[4] || '')
+            .replace(/[\u200B-\u200D\uFEFF]/g, '') // 특수 공백 제거
+            .trim()
+          )
+          .filter(name => name !== ''); // 완전히 비어있는 값 제거
 
-      const uniqueNames = Array.from(new Set(cleanedNames));
-      setNames(uniqueNames);
-    })
-    .catch(error => console.error('API 호출 오류:', error));
-}, []);
+        const uniqueNames = Array.from(new Set(cleanedNames));
+        setNames(uniqueNames);
+      })
+      .catch(error => console.error('API 호출 오류:', error));
+  }, []);
 
-const handleNameChange = (e) => {
-  const name = e.target.value;
-  setSelectedName(name);
+  const handleNameChange = (e) => {
+    const name = e.target.value;
+    setSelectedName(name);
 
-  if (name === '') {
-    setFilteredData(data);
-  } else {
-    const filtered = data.filter(item => {
-      const donor = (item[4] || '')
-        .replace(/[\u200B-\u200D\uFEFF]/g, '')
-        .trim();
-      return donor === name;
-    });
-    setFilteredData(filtered);
-  }
-};
+    if (name === '') {
+      setFilteredData(data);
+    } else {
+      const filtered = data.filter(item => {
+        const donor = (item[4] || '')
+          .replace(/[\u200B-\u200D\uFEFF]/g, '')
+          .trim();
+        return donor === name;
+      });
+      setFilteredData(filtered);
+    }
+  };
 
+  // Donator별 점수 합계 계산
+  const donatorSummary = {};
+  filteredData.forEach(item => {
+    const donator = item[1];
+    const score = Number(item[2]?.replace(/[^0-9]/g, '')) || 0;
+
+    if (donator) {
+      donatorSummary[donator] = (donatorSummary[donator] || 0) + score;
+    }
+  });
+
+  // 총합 계산
   const totalScore = filteredData.reduce((sum, item) => sum + (Number(item[6]) || 0), 0);
+
+  // 날짜 포맷 변경 함수
   const parseDateFromString = (dateStr) => {
     if (typeof dateStr !== 'string') return ''; // null, undefined, number, object 등 방지
-  
+
     const match = dateStr.match(/Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)/);
     if (!match) return dateStr; // 형식에 맞지 않으면 원본 반환
-  
+
     const [_, year, month, day, hour, min, sec] = match.map(Number);
     const date = new Date(year, month, day, hour, min, sec);
-  
+
     const pad = (n) => String(n).padStart(2, '0');
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
   };
-  
 
   return (
     <Page>
       <Layout>
-      <h1 style={{ textAlign: 'center' }}>ASG Score Board</h1>
-    
+        <h1 style={{ textAlign: 'center' }}>ASG Score Board</h1>
 
-      <StyledSelect value={selectedName} onChange={handleNameChange}>
-      <option value="">전체</option>
-        {names.map((name, index) => (
-          <option key={index} value={name}>
-            {name}
-          </option>
-        ))}
-      </StyledSelect>
+        <StyledSelect value={selectedName} onChange={handleNameChange}>
+          <option value="">전체</option>
+          {names.map((name, index) => (
+            <option key={index} value={name}>
+              {name}
+            </option>
+          ))}
+        </StyledSelect>
 
         <h2>Result</h2>
-{selectedName !== '' && (
-  <p><strong>Total :</strong> {totalScore}</p>
-)}
 
-<Table>
-  <thead>
-    <tr>
-      <th>Time</th>
-      <th>Donator</th>
-      <th>Score</th>
-      <th>text</th>
-      <th>Name</th>
-    </tr>
-  </thead>
-  <tbody>
-    {filteredData.map((row, index) => (
-      <tr key={index}>
-        <td>{parseDateFromString(row[0])}</td>
-        <td>{row[1]}</td>
-        <td>{row[2]}</td>
-        <td>{row[3]?.length > 10 ? `${row[3].slice(0, 10)}...` : row[3]}</td>
-        <td>{row[4]}</td>
-      </tr>
-    ))}
-  </tbody>
-</Table>
+        {/* "전체"가 선택되었을 때 선물 리스트 안 보이게 하기 */}
+                  {selectedName !== '' && Object.entries(donatorSummary).length > 0 && (
+            <>
+              <h3>선물 리스트</h3>
+              <Table>
+                <thead>
+                  <tr>
+                    <th>Donator</th>
+                    <th>Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(donatorSummary)
+                    .sort(([, totalA], [, totalB]) => totalB - totalA) // 갯수 내림차순 정렬
+                    .map(([donator, total], index) => (
+                      <tr key={index}>
+                        <td>{donator}</td>
+                        <td>{total.toLocaleString()}개</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </Table>
+            </>
+          )}
+
+        {selectedName !== '' && (
+          <p style={{ fontSize: '1.5em', fontWeight: 'bold' }}>
+          <strong>Total :</strong> {totalScore}
+        </p>
+        )}
+
+        <Table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Donator</th>
+              <th>Score</th>
+              <th>text</th>
+              <th>Name</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredData.map((row, index) => (
+              <tr key={index}>
+                <td>{parseDateFromString(row[0])}</td>
+                <td>{row[1]}</td>
+                <td>{row[2]}</td>
+                <td>{row[3]?.length > 10 ? `${row[3].slice(0, 10)}...` : row[3]}</td>
+                <td>{row[4]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
       </Layout>
     </Page>
   );
@@ -139,7 +179,7 @@ const Layout = styled.div`
   display: flex;
   flex-direction: column;
   width: 100%;
-   max-width: 640px; 
+  max-width: 640px;
   height: 100%;
   max-height: 920px;
   background-color: #ffffff;
@@ -147,6 +187,7 @@ const Layout = styled.div`
   box-sizing: border-box;
   overflow-y: auto;
 `;
+
 const StyledSelect = styled.select`
   font-size: 1.0rem;
   padding: 8px 12px;
